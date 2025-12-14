@@ -1,0 +1,120 @@
+LOCAL SCRIPT - GUI FelipxHub
+local Players = game:GetService("Players") local ReplicatedStorage = game:GetService("ReplicatedStorage") local Player = Players.LocalPlayer
+local Remote = ReplicatedStorage:WaitForChild("FelipxRemote")
+-- ScreenGui local ScreenGui = Instance.new("ScreenGui") ScreenGui.Name = "FelipxHub" ScreenGui.IgnoreGuiInset = true ScreenGui.ResetOnSpawn = false ScreenGui.Parent = Player:WaitForChild("PlayerGui")
+-- Main Frame local Main = Instance.new("Frame", ScreenGui) Main.Size = UDim2.new(0, 380, 0, 320) Main.Position = UDim2.new(0.3,0,0.25,0) Main.BackgroundColor3 = Color3.fromRGB(0,170,255) Main.Active = true Main.Draggable = true Instance.new("UICorner", Main).CornerRadius = UDim.new(0,14)
+-- Title local Title = Instance.new("TextLabel", Main) Title.Size = UDim2.new(1,-90,0,40) Title.Position = UDim2.new(0,10,0,0) Title.Text = "FelipxHub" Title.TextColor3 = Color3.new(1,1,1) Title.Font = Enum.Font.GothamBold Title.TextSize = 22 Title.BackgroundTransparency = 1 Title.TextXAlignment = Enum.TextXAlignment.Left
+-- Close local Close = Instance.new("TextButton", Main) Close.Size = UDim2.new(0,35,0,35) Close.Position = UDim2.new(1,-40,0,5) Close.Text = "X" Close.BackgroundColor3 = Color3.fromRGB(255,0,170) Close.TextColor3 = Color3.new(1,1,1) Close.Font = Enum.Font.GothamBold Instance.new("UICorner", Close)
+-- Minimize local Min = Instance.new("TextButton", Main) Min.Size = UDim2.new(0,35,0,35) Min.Position = UDim2.new(1,-80,0,5) Min.Text = "-" Min.BackgroundColor3 = Color3.fromRGB(0,255,120) Min.TextColor3 = Color3.new(1,1,1) Min.Font = Enum.Font.GothamBold Instance.new("UICorner", Min)
+-- Floating Button local Float = Instance.new("TextButton", ScreenGui) Float.Size = UDim2.new(0,60,0,60) Float.Position = UDim2.new(0.1,0,0.5,0) Float.Text = "Felx" Float.Visible = false Float.BackgroundColor3 = Color3.fromRGB(0,170,255) Float.TextColor3 = Color3.new(1,1,1) Float.Font = Enum.Font.GothamBold Float.Active = true Float.Draggable = true Instance.new("UICorner", Float).CornerRadius = UDim.new(1,0)
+-- Buttons local function makeBtn(text,y) local b = Instance.new("TextButton", Main) b.Size = UDim2.new(0.85,0,0,42) b.Position = UDim2.new(0.075,0,y,0) b.Text = text b.Font = Enum.Font.GothamBold b.TextColor3 = Color3.new(1,1,1) b.BackgroundColor3 = Color3.fromRGB(0,120,255) Instance.new("UICorner", b) return b end
+local TP1 = makeBtn("TP1 - Guardar posición",0.18) local TP2 = makeBtn("TP2 - Teleport (Premium)",0.33) local Vel = makeBtn("Velocity Boost",0.48) local Jump = makeBtn("Jumbo Boost",0.63) local Desync = makeBtn("Premium Desync Clone",0.78)
+-- GUI Logic Close.MouseButton1Click:Connect(function() ScreenGui:Destroy() end) Min.MouseButton1Click:Connect(function() Main.Visible=false Float.Visible=true end) Float.MouseButton1Click:Connect(function() Main.Visible=true Float.Visible=false end)
+-- Remote calls TP1.MouseButton1Click:Connect(function() Remote:FireServer("SaveTP") end) TP2.MouseButton1Click:Connect(function() Remote:FireServer("LoadTP","Felxphub") end) Vel.MouseButton1Click:Connect(function() Remote:FireServer("Velocity") end) Jump.MouseButton1Click:Connect(function() Remote:FireServer("Jump") end) Desync.MouseButton1Click:Connect(function() Remote:FireServer("Desync","Felxphub") end)
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+-- Remote
+local Remote = Instance.new("RemoteEvent")
+Remote.Name = "FelipxRemote"
+Remote.Parent = ReplicatedStorage
+
+-- Premium por UserId (SEGURO)
+local PremiumUsers = {
+	[123456789] = true, -- TU UserId
+}
+
+-- Data
+local SavedPos = {}
+local Cooldown = {}
+
+-- Utils
+local function getChar(plr)
+	local c = plr.Character
+	if not c then return end
+	return c:FindFirstChild("HumanoidRootPart"), c:FindFirstChildOfClass("Humanoid")
+end
+
+local function isPremium(plr)
+	return PremiumUsers[plr.UserId] == true
+end
+
+-- Limpieza
+Players.PlayerRemoving:Connect(function(plr)
+	SavedPos[plr] = nil
+	Cooldown[plr] = nil
+end)
+
+-- Remote handler
+Remote.OnServerEvent:Connect(function(plr, action)
+	-- Anti spam
+	if Cooldown[plr] and tick() - Cooldown[plr] < 1 then return end
+	Cooldown[plr] = tick()
+
+	local hrp, hum = getChar(plr)
+	if not hrp or not hum then return end
+
+	-- GUARDAR TP
+	if action == "SaveTP" then
+		SavedPos[plr] = hrp.CFrame
+
+	-- CARGAR TP (PREMIUM)
+	elseif action == "LoadTP" and isPremium(plr) and SavedPos[plr] then
+		hrp.Anchored = true
+		hrp.CFrame = SavedPos[plr]
+		task.wait(0.15)
+		hrp.Anchored = false
+
+	-- VELOCIDAD
+	elseif action == "Velocity" then
+		hum.WalkSpeed = 22
+		task.delay(6, function()
+			if hum then hum.WalkSpeed = 16 end
+		end)
+
+	-- SALTO
+	elseif action == "Jump" then
+		hum.JumpPower = 80
+		task.delay(6, function()
+			if hum then hum.JumpPower = 50 end
+		end)
+
+	-- DESYNC PREMIUM (SEGURO)
+	elseif action == "Desync" and isPremium(plr) then
+		local char = plr.Character
+		if not char then return end
+
+		-- Clone limpio
+		local clone = char:Clone()
+		for _,v in ipairs(clone:GetDescendants()) do
+			if v:IsA("Script") or v:IsA("LocalScript") then
+				v:Destroy()
+			end
+		end
+		clone.Parent = workspace
+		clone:SetPrimaryPartCFrame(hrp.CFrame)
+
+		-- Invisibilidad
+		for _,v in ipairs(char:GetDescendants()) do
+			if v:IsA("BasePart") then
+				v.Transparency = 1
+				v.CanCollide = false
+			end
+		end
+
+		-- Inmunidad segura
+		hum:SetAttribute("Invincible", true)
+
+		task.delay(8, function()
+			if clone then clone:Destroy() end
+			hum:SetAttribute("Invincible", false)
+
+			for _,v in ipairs(char:GetDescendants()) do
+				if v:IsA("BasePart") then
+					v.Transparency = 0
+					v.CanCollide = true
+				end
+			end
+		end)
+	end
+end)
